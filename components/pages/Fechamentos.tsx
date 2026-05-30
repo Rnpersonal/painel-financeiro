@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { supabase, type Lancamento, type Fechamento } from '@/lib/supabase'
-import { fmt, MESES, MESES_OPTIONS } from '@/lib/utils'
+import { fmt, MESES, MESES_OPTIONS, formatDate } from '@/lib/utils'
 import { Modal } from '@/components/ui/Modal'
 import { toast } from '@/components/ui/Toast'
 

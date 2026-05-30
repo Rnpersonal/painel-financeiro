@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { supabase, type Lancamento, type Categoria } from '@/lib/supabase'
-import { fmt, MESES_OPTIONS } from '@/lib/utils'
+import { fmt, MESES_OPTIONS, formatDate } from '@/lib/utils'
 import { Modal } from '@/components/ui/Modal'
 import { toast } from '@/components/ui/Toast'
 
@@ -16,7 +16,7 @@ export function Pendentes() {
   async function load() {
     setLoading(true)
     const [{ data: l }, { data: c }] = await Promise.all([
-      supabase.from('lancamentos').select('*').eq('categoria', 'Sem categoria').order('data', { ascending: false }),
+      supabase.from('lancamentos').select('*').eq('pendente', true).order('data', { ascending: false }),
       supabase.from('categorias').select('*').order('nome'),
     ])
     setPendentes(l || [])
@@ -28,16 +28,30 @@ export function Pendentes() {
 
   async function categorizar() {
     if (!catSel || !modal) { toast('Selecione uma categoria', 'erro'); return }
-    const { error } = await supabase.from('lancamentos').update({ categoria: catSel, mes: mesSel }).eq('id', modal.id)
+    const { error } = await supabase
+      .from('lancamentos')
+      .update({ categoria: catSel, mes: mesSel, pendente: false })
+      .eq('id', modal.id)
     if (error) { toast('Erro ao categorizar', 'erro'); return }
     toast('Lançamento categorizado!', 'sucesso')
     setModal(null)
     load()
   }
 
+  async function confirmar(id: string) {
+    const { error } = await supabase.from('lancamentos').update({ pendente: false }).eq('id', id)
+    if (error) { toast('Erro ao confirmar', 'erro'); return }
+    toast('Lançamento confirmado!', 'sucesso')
+    load()
+  }
+
   async function resolverTodos() {
     if (pendentes.length === 0) return
-    await supabase.from('lancamentos').delete().in('id', pendentes.map(p => p.id))
+    const { error } = await supabase
+      .from('lancamentos')
+      .update({ pendente: false })
+      .in('id', pendentes.map(p => p.id))
+    if (error) { toast('Erro ao resolver', 'erro'); return }
     toast('Todos os pendentes resolvidos!', 'sucesso')
     load()
   }
@@ -60,7 +74,7 @@ export function Pendentes() {
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
             <tr>
-              {['Data', 'Descrição', 'Valor', 'Situação', 'Ações'].map(h => (
+              {['Data', 'Descrição', 'Valor', 'Categoria', 'Ações'].map(h => (
                 <th key={h} style={{ textAlign: 'left', padding: '10px 12px', fontSize: 11, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.5px', borderBottom: '1px solid #f3f4f6' }}>{h}</th>
               ))}
             </tr>
@@ -69,20 +83,31 @@ export function Pendentes() {
             {loading ? (
               <tr><td colSpan={5} style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>Carregando...</td></tr>
             ) : pendentes.length === 0 ? (
-              <tr><td colSpan={5} style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>Nenhum lançamento pendente 🎉</td></tr>
+              <tr><td colSpan={5} style={{ textAlign: 'center', padding: 40, color: '#9ca3af', fontSize: 14 }}>Nenhum lançamento pendente 🎉</td></tr>
             ) : pendentes.map(l => (
               <tr key={l.id}>
-                <td style={{ padding: '11px 12px', borderBottom: '1px solid #f9fafb', color: '#374151' }}>{l.data}</td>
+                <td style={{ padding: '11px 12px', borderBottom: '1px solid #f9fafb', color: '#374151' }}>{formatDate(l.data)}</td>
                 <td style={{ padding: '11px 12px', borderBottom: '1px solid #f9fafb', color: '#374151' }}>{l.descricao}</td>
                 <td style={{ padding: '11px 12px', borderBottom: '1px solid #f9fafb', color: l.tipo === 'entrada' ? '#059669' : '#dc2626', fontWeight: 700 }}>
                   {l.tipo === 'saida' ? '− ' : '+ '}{fmt(l.valor)}
                 </td>
                 <td style={{ padding: '11px 12px', borderBottom: '1px solid #f9fafb' }}>
-                  <span style={{ background: '#fef3c7', color: '#92400e', padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 500 }}>Sem categoria</span>
+                  <span style={{ background: '#fef3c7', color: '#92400e', padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 500 }}>
+                    {l.categoria || 'Sem categoria'}
+                  </span>
                 </td>
-                <td style={{ padding: '11px 12px', borderBottom: '1px solid #f9fafb' }}>
-                  <button onClick={() => { setModal(l); setCatSel(categorias[0]?.nome || '') }} style={{ background: '#4f46e5', color: '#fff', border: 'none', borderRadius: 6, padding: '4px 10px', fontSize: 12, cursor: 'pointer' }}>
+                <td style={{ padding: '11px 12px', borderBottom: '1px solid #f9fafb', display: 'flex', gap: 6 }}>
+                  <button
+                    onClick={() => { setModal(l); setCatSel(categorias[0]?.nome || '') }}
+                    style={{ background: '#4f46e5', color: '#fff', border: 'none', borderRadius: 6, padding: '4px 10px', fontSize: 12, cursor: 'pointer' }}
+                  >
                     Categorizar
+                  </button>
+                  <button
+                    onClick={() => confirmar(l.id)}
+                    style={{ background: '#f3f4f6', color: '#374151', border: 'none', borderRadius: 6, padding: '4px 10px', fontSize: 12, cursor: 'pointer' }}
+                  >
+                    Confirmar
                   </button>
                 </td>
               </tr>
@@ -90,6 +115,10 @@ export function Pendentes() {
           </tbody>
         </table>
       </div>
+
+      <p style={{ fontSize: 12, color: '#9ca3af', marginTop: 12 }}>
+        Lançamentos marcados como pendentes aparecem aqui. Ao criar um lançamento, marque &quot;Pendente&quot; para revisão posterior.
+      </p>
 
       <Modal title="Categorizar Lançamento" open={!!modal} onClose={() => setModal(null)}
         footer={<>

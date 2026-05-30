@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { supabase, type Lancamento, type Categoria } from '@/lib/supabase'
-import { fmt, MESES_OPTIONS } from '@/lib/utils'
+import { fmt, MESES_OPTIONS, formatDate } from '@/lib/utils'
 import { Modal } from '@/components/ui/Modal'
 import { toast } from '@/components/ui/Toast'
 
@@ -18,7 +18,7 @@ export function Lancamentos() {
   const [filtroMes, setFiltroMes] = useState('')
   const [modal, setModal] = useState<'novo' | 'editar' | 'excluir' | null>(null)
   const [editing, setEditing] = useState<Lancamento | null>(null)
-  const [form, setForm] = useState({ tipo: 'entrada', descricao: '', data: new Date().toISOString().slice(0, 10), valor: '', categoria: '', mes: '2026-04' })
+  const [form, setForm] = useState({ tipo: 'entrada', descricao: '', data: new Date().toISOString().slice(0, 10), valor: '', categoria: '', mes: '2026-04', pendente: false })
 
   async function load() {
     setLoading(true)
@@ -41,13 +41,13 @@ export function Lancamentos() {
   )
 
   function abrirNovo() {
-    setForm({ tipo: 'entrada', descricao: '', data: new Date().toISOString().slice(0, 10), valor: '', categoria: categorias[0]?.nome || '', mes: '2026-04' })
+    setForm({ tipo: 'entrada', descricao: '', data: new Date().toISOString().slice(0, 10), valor: '', categoria: categorias[0]?.nome || '', mes: '2026-04', pendente: false })
     setEditing(null)
     setModal('novo')
   }
 
   function abrirEditar(l: Lancamento) {
-    setForm({ tipo: l.tipo, descricao: l.descricao, data: l.data, valor: String(l.valor), categoria: l.categoria, mes: l.mes })
+    setForm({ tipo: l.tipo, descricao: l.descricao, data: l.data, valor: String(l.valor), categoria: l.categoria, mes: l.mes, pendente: l.pendente ?? false })
     setEditing(l)
     setModal('editar')
   }
@@ -56,7 +56,7 @@ export function Lancamentos() {
     if (!form.descricao.trim()) { toast('Informe a descrição', 'erro'); return }
     const valor = parseFloat(form.valor)
     if (!valor || valor <= 0) { toast('Informe um valor válido', 'erro'); return }
-    const payload = { tipo: form.tipo as 'entrada' | 'saida', descricao: form.descricao, data: form.data, valor, categoria: form.categoria, mes: form.mes }
+    const payload = { tipo: form.tipo as 'entrada' | 'saida', descricao: form.descricao, data: form.data, valor, categoria: form.categoria, mes: form.mes, pendente: form.pendente }
     if (editing) {
       const { error } = await supabase.from('lancamentos').update(payload).eq('id', editing.id)
       if (error) { toast('Erro ao atualizar', 'erro'); return }
@@ -126,7 +126,7 @@ export function Lancamentos() {
               <tr><td colSpan={6} style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>Nenhum lançamento encontrado</td></tr>
             ) : filtered.map(l => (
               <tr key={l.id}>
-                <td style={{ padding: '11px 12px', borderBottom: '1px solid #f9fafb', color: '#374151' }}>{l.data}</td>
+                <td style={{ padding: '11px 12px', borderBottom: '1px solid #f9fafb', color: '#374151' }}>{formatDate(l.data)}</td>
                 <td style={{ padding: '11px 12px', borderBottom: '1px solid #f9fafb', color: '#374151' }}>{l.descricao}</td>
                 <td style={{ padding: '11px 12px', borderBottom: '1px solid #f9fafb' }}>
                   <span style={{ background: '#f3f4f6', color: '#6b7280', padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 500 }}>{l.categoria}</span>
@@ -183,12 +183,16 @@ export function Lancamentos() {
             {catsFiltradas.map(c => <option key={c.id}>{c.nome}</option>)}
           </select>
         </div>
-        <div>
+        <div style={{ marginBottom: 16 }}>
           <label style={labelStyle}>Mês de referência</label>
           <select value={form.mes} onChange={e => setForm(f => ({ ...f, mes: e.target.value }))} style={inputStyle}>
             {MESES_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
         </div>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#374151', cursor: 'pointer' }}>
+          <input type="checkbox" checked={form.pendente} onChange={e => setForm(f => ({ ...f, pendente: e.target.checked }))} />
+          Marcar como pendente (aparece na aba Pendentes para revisão)
+        </label>
       </Modal>
 
       {/* Modal Excluir */}

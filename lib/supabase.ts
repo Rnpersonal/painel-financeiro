@@ -13,6 +13,7 @@ export type Lancamento = {
   data: string
   mes: string
   valor: number
+  pendente?: boolean
   created_at?: string
 }
 

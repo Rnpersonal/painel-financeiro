@@ -1,7 +1,7 @@
 'use client'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { supabase, type Lancamento } from '@/lib/supabase'
-import { fmt, MESES, MESES_OPTIONS } from '@/lib/utils'
+import { fmt, MESES, MESES_OPTIONS, formatDate } from '@/lib/utils'
 
 type CatVal = { nome: string; valor: number; cor: string }
 
@@ -25,85 +25,100 @@ export function Dashboard() {
   const [mes, setMes] = useState('2026-04')
   const [lancamentos, setLancamentos] = useState<Lancamento[]>([])
   const [loading, setLoading] = useState(true)
+  const [erro, setErro] = useState('')
   const chartRef = useRef<HTMLCanvasElement>(null)
   const chartPSRef = useRef<HTMLCanvasElement>(null)
   const chartPERef = useRef<HTMLCanvasElement>(null)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const charts = useRef<any>({})
+  const chartsRef = useRef<Record<string, any>>({})
 
-  async function load(m: string) {
+  const load = useCallback(async (m: string) => {
     setLoading(true)
-    const { data } = await supabase.from('lancamentos').select('*').eq('mes', m).order('data', { ascending: false })
+    setErro('')
+    const { data, error } = await supabase
+      .from('lancamentos')
+      .select('*')
+      .eq('mes', m)
+      .order('data', { ascending: false })
+    if (error) { setErro('Erro ao carregar dados. Verifique a conexão.'); setLoading(false); return }
     setLancamentos(data || [])
     setLoading(false)
-  }
+  }, [])
 
-  useEffect(() => { load(mes) }, [mes])
+  useEffect(() => { load(mes) }, [mes, load])
 
   useEffect(() => {
-    let destroyed = false
-    async function initCharts() {
-      if (!chartRef.current || !chartPSRef.current || !chartPERef.current) return
-      const { Chart, registerables } = await import('chart.js')
-      Chart.register(...registerables)
-      if (destroyed) return
+    if (loading) return
+    let cancelled = false
 
-      // destroy previous
-      Object.values(charts.current).forEach((c: any) => c.destroy())
-      charts.current = {}
+    async function initCharts() {
+      const { Chart, registerables } = await import('chart.js')
+      if (cancelled) return
+      Chart.register(...registerables)
+
+      // Destroy existing charts
+      Object.values(chartsRef.current).forEach((c) => { try { c.destroy() } catch { /* ignore */ } })
+      chartsRef.current = {}
 
       const entradas = lancamentos.filter(l => l.tipo === 'entrada')
       const saidas = lancamentos.filter(l => l.tipo === 'saida')
       const totalE = entradas.reduce((s, l) => s + l.valor, 0)
       const totalS = saidas.reduce((s, l) => s + l.valor, 0)
 
-      // group by category for saida
       const catS: Record<string, CatVal> = {}
       saidas.forEach(l => {
-        catS[l.categoria] = catS[l.categoria] || { nome: l.categoria, valor: 0, cor: '#6366f1' }
+        if (!catS[l.categoria]) catS[l.categoria] = { nome: l.categoria, valor: 0, cor: '#6366f1' }
         catS[l.categoria].valor += l.valor
       })
       const catE: Record<string, CatVal> = {}
       entradas.forEach(l => {
-        catE[l.categoria] = catE[l.categoria] || { nome: l.categoria, valor: 0, cor: '#10b981' }
+        if (!catE[l.categoria]) catE[l.categoria] = { nome: l.categoria, valor: 0, cor: '#10b981' }
         catE[l.categoria].valor += l.valor
       })
 
       const catSArr = Object.values(catS)
       const catEArr = Object.values(catE)
+      const CORES_S = ['#6366f1', '#ef4444', '#f59e0b', '#8b5cf6', '#3b82f6', '#10b981']
+      const CORES_E = ['#10b981', '#6366f1', '#94a3b8', '#f59e0b', '#3b82f6']
 
       if (chartRef.current) {
-        charts.current.bar = new Chart(chartRef.current.getContext('2d')!, {
+        const ctx = chartRef.current.getContext('2d')
+        if (ctx) chartsRef.current.bar = new Chart(ctx, {
           type: 'bar',
           data: {
             labels: ['Entradas', 'Saídas'],
-            datasets: [
-              { label: 'Valor', data: [totalE, totalS], backgroundColor: ['#10b981', '#ef4444'], borderRadius: 4 }
-            ]
+            datasets: [{ label: 'Valor', data: [totalE, totalS], backgroundColor: ['#10b981', '#ef4444'], borderRadius: 4 }]
           },
-          options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { display: false } }, scales: { y: { ticks: { callback: (v: any) => `R$${(v / 1000).toFixed(0)}k` } } } }
+          options: {
+            responsive: true, maintainAspectRatio: true,
+            plugins: { legend: { display: false } },
+            scales: { y: { ticks: { callback: (v) => `R$${(Number(v) / 1000).toFixed(0)}k` } } }
+          }
         })
       }
 
       if (chartPSRef.current && catSArr.length > 0) {
-        charts.current.ps = new Chart(chartPSRef.current.getContext('2d')!, {
+        const ctx = chartPSRef.current.getContext('2d')
+        if (ctx) chartsRef.current.ps = new Chart(ctx, {
           type: 'doughnut',
-          data: { labels: catSArr.map(c => c.nome), datasets: [{ data: catSArr.map(c => c.valor), backgroundColor: ['#6366f1','#ef4444','#f59e0b','#8b5cf6','#3b82f6','#10b981'], borderWidth: 2, borderColor: '#fff' }] },
+          data: { labels: catSArr.map(c => c.nome), datasets: [{ data: catSArr.map(c => c.valor), backgroundColor: CORES_S, borderWidth: 2, borderColor: '#fff' }] },
           options: { responsive: true, maintainAspectRatio: false, cutout: '65%', plugins: { legend: { display: false } } }
         })
       }
 
       if (chartPERef.current && catEArr.length > 0) {
-        charts.current.pe = new Chart(chartPERef.current.getContext('2d')!, {
+        const ctx = chartPERef.current.getContext('2d')
+        if (ctx) chartsRef.current.pe = new Chart(ctx, {
           type: 'doughnut',
-          data: { labels: catEArr.map(c => c.nome), datasets: [{ data: catEArr.map(c => c.valor), backgroundColor: ['#10b981','#6366f1','#94a3b8'], borderWidth: 2, borderColor: '#fff' }] },
+          data: { labels: catEArr.map(c => c.nome), datasets: [{ data: catEArr.map(c => c.valor), backgroundColor: CORES_E, borderWidth: 2, borderColor: '#fff' }] },
           options: { responsive: true, maintainAspectRatio: false, cutout: '65%', plugins: { legend: { display: false } } }
         })
       }
     }
+
     initCharts()
-    return () => { destroyed = true }
-  }, [lancamentos])
+    return () => { cancelled = true }
+  }, [lancamentos, loading])
 
   const totalE = lancamentos.filter(l => l.tipo === 'entrada').reduce((s, l) => s + l.valor, 0)
   const totalS = lancamentos.filter(l => l.tipo === 'saida').reduce((s, l) => s + l.valor, 0)
@@ -114,14 +129,16 @@ export function Dashboard() {
 
   const catS: Record<string, CatVal> = {}
   lancamentos.filter(l => l.tipo === 'saida').forEach(l => {
-    catS[l.categoria] = catS[l.categoria] || { nome: l.categoria, valor: 0, cor: '#6366f1' }
+    if (!catS[l.categoria]) catS[l.categoria] = { nome: l.categoria, valor: 0, cor: '#6366f1' }
     catS[l.categoria].valor += l.valor
   })
   const catE: Record<string, CatVal> = {}
   lancamentos.filter(l => l.tipo === 'entrada').forEach(l => {
-    catE[l.categoria] = catE[l.categoria] || { nome: l.categoria, valor: 0, cor: '#10b981' }
+    if (!catE[l.categoria]) catE[l.categoria] = { nome: l.categoria, valor: 0, cor: '#10b981' }
     catE[l.categoria].valor += l.valor
   })
+  const CORES_S = ['#6366f1', '#ef4444', '#f59e0b', '#8b5cf6', '#3b82f6', '#10b981']
+  const CORES_E = ['#10b981', '#6366f1', '#94a3b8', '#f59e0b', '#3b82f6']
 
   return (
     <div style={{ padding: 28 }}>
@@ -135,8 +152,18 @@ export function Dashboard() {
         </select>
       </div>
 
+      {erro && (
+        <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '12px 16px', marginBottom: 20, color: '#991b1b', fontSize: 13 }}>
+          {erro}
+        </div>
+      )}
+
       {loading ? (
-        <p style={{ color: '#9ca3af', fontSize: 13 }}>Carregando...</p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 20 }}>
+          {[1,2,3,4].map(i => (
+            <div key={i} style={{ background: '#f3f4f6', borderRadius: 12, padding: 20, height: 90, animation: 'pulse 1.5s infinite' }} />
+          ))}
+        </div>
       ) : (
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 20 }}>
@@ -162,36 +189,46 @@ export function Dashboard() {
           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16, marginBottom: 16 }}>
             <div style={{ background: '#fff', borderRadius: 12, padding: 20, boxShadow: '0 1px 3px rgba(0,0,0,.06)' }}>
               <h3 style={{ fontSize: 14, fontWeight: 600, color: '#374151', marginBottom: 16 }}>Entradas vs Saídas</h3>
-              <canvas ref={chartRef} height={120} />
+              {lancamentos.length === 0
+                ? <p style={{ color: '#9ca3af', fontSize: 13, textAlign: 'center', padding: '40px 0' }}>Sem dados para exibir</p>
+                : <canvas ref={chartRef} height={120} />}
             </div>
             <div style={{ background: '#fff', borderRadius: 12, padding: 20, boxShadow: '0 1px 3px rgba(0,0,0,.06)' }}>
               <h3 style={{ fontSize: 14, fontWeight: 600, color: '#374151', marginBottom: 16 }}>Saídas por Categoria</h3>
-              <div style={{ position: 'relative', height: 160 }}><canvas ref={chartPSRef} /></div>
-              <div style={{ marginTop: 12 }}>
-                {Object.values(catS).sort((a, b) => b.valor - a.valor).slice(0, 4).map((c, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, marginBottom: 6 }}>
-                    <span style={{ width: 10, height: 10, borderRadius: '50%', background: ['#6366f1','#ef4444','#f59e0b','#8b5cf6'][i] || '#ccc', flexShrink: 0 }} />
-                    <span style={{ flex: 1, color: '#4b5563', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nome}</span>
-                    <span style={{ color: '#374151', fontWeight: 600 }}>{fmt(c.valor)}</span>
+              {Object.values(catS).length === 0
+                ? <p style={{ color: '#9ca3af', fontSize: 13, textAlign: 'center', padding: '20px 0' }}>Sem saídas</p>
+                : <>
+                  <div style={{ position: 'relative', height: 160 }}><canvas ref={chartPSRef} /></div>
+                  <div style={{ marginTop: 12 }}>
+                    {Object.values(catS).sort((a, b) => b.valor - a.valor).slice(0, 4).map((c, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, marginBottom: 6 }}>
+                        <span style={{ width: 10, height: 10, borderRadius: '50%', background: CORES_S[i] || '#ccc', flexShrink: 0 }} />
+                        <span style={{ flex: 1, color: '#4b5563', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nome}</span>
+                        <span style={{ color: '#374151', fontWeight: 600 }}>{fmt(c.valor)}</span>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </>}
             </div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
             <div style={{ background: '#fff', borderRadius: 12, padding: 20, boxShadow: '0 1px 3px rgba(0,0,0,.06)' }}>
               <h3 style={{ fontSize: 14, fontWeight: 600, color: '#374151', marginBottom: 16 }}>Entradas por Categoria</h3>
-              <div style={{ position: 'relative', height: 160 }}><canvas ref={chartPERef} /></div>
-              <div style={{ marginTop: 12 }}>
-                {Object.values(catE).sort((a, b) => b.valor - a.valor).slice(0, 3).map((c, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, marginBottom: 6 }}>
-                    <span style={{ width: 10, height: 10, borderRadius: '50%', background: ['#10b981','#6366f1','#94a3b8'][i] || '#ccc', flexShrink: 0 }} />
-                    <span style={{ flex: 1, color: '#4b5563', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nome}</span>
-                    <span style={{ color: '#374151', fontWeight: 600 }}>{fmt(c.valor)}</span>
+              {Object.values(catE).length === 0
+                ? <p style={{ color: '#9ca3af', fontSize: 13, textAlign: 'center', padding: '20px 0' }}>Sem entradas</p>
+                : <>
+                  <div style={{ position: 'relative', height: 160 }}><canvas ref={chartPERef} /></div>
+                  <div style={{ marginTop: 12 }}>
+                    {Object.values(catE).sort((a, b) => b.valor - a.valor).slice(0, 3).map((c, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, marginBottom: 6 }}>
+                        <span style={{ width: 10, height: 10, borderRadius: '50%', background: CORES_E[i] || '#ccc', flexShrink: 0 }} />
+                        <span style={{ flex: 1, color: '#4b5563', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nome}</span>
+                        <span style={{ color: '#374151', fontWeight: 600 }}>{fmt(c.valor)}</span>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </>}
             </div>
             <div style={{ background: '#fff', borderRadius: 12, padding: 20, boxShadow: '0 1px 3px rgba(0,0,0,.06)' }}>
               <h3 style={{ fontSize: 14, fontWeight: 600, color: '#374151', marginBottom: 16 }}>Últimos Lançamentos</h3>
@@ -203,7 +240,10 @@ export function Dashboard() {
                     <span style={{ fontSize: 15 }}>{l.tipo === 'entrada' ? '⬆' : '⬇'}</span>
                     <div>
                       <div style={{ fontSize: 13, fontWeight: 500, color: '#374151' }}>{l.descricao}</div>
-                      <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>{l.data} <span style={{ background: '#f3f4f6', color: '#6b7280', padding: '1px 6px', borderRadius: 4 }}>{l.categoria}</span></div>
+                      <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>
+                        {formatDate(l.data)}{' '}
+                        <span style={{ background: '#f3f4f6', color: '#6b7280', padding: '1px 6px', borderRadius: 4 }}>{l.categoria}</span>
+                      </div>
                     </div>
                   </div>
                   <span style={{ color: l.tipo === 'entrada' ? '#059669' : '#dc2626', fontWeight: 700 }}>

@@ -17,11 +17,7 @@ export function getMesAtual(): string {
 }
 
 export function formatDate(iso: string): string {
+  if (!iso) return ''
   const [y, m, d] = iso.split('-')
   return `${d}/${m}/${y}`
-}
-
-export function toIsoDate(br: string): string {
-  const [d, m, y] = br.split('/')
-  return `${y}-${m}-${d}`
 }

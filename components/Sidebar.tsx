@@ -29,6 +29,8 @@ export function Sidebar({ current, onChange }: Props) {
           <button
             key={n.id}
             onClick={() => onChange(n.id)}
+            onMouseEnter={e => { if (current !== n.id) { (e.currentTarget as HTMLButtonElement).style.background = '#1f2937'; (e.currentTarget as HTMLButtonElement).style.color = '#fff' } }}
+            onMouseLeave={e => { if (current !== n.id) { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; (e.currentTarget as HTMLButtonElement).style.color = '#9ca3af' } }}
             style={{
               display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8,
               fontSize: 13, fontWeight: 500, width: '100%', border: 'none', cursor: 'pointer',
