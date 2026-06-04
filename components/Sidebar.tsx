@@ -18,10 +18,10 @@ export function Sidebar({ current, onChange }: Props) {
   return (
     <aside style={{ width: 240, minHeight: '100vh', background: '#111827', color: '#fff', display: 'flex', flexDirection: 'column', flexShrink: 0, position: 'sticky', top: 0, height: '100vh' }}>
       <div style={{ padding: '20px 16px', borderBottom: '1px solid #374151', display: 'flex', alignItems: 'center', gap: 10 }}>
-        <div style={{ width: 32, height: 32, background: '#4f46e5', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 14 }}>$</div>
+        <div style={{ width: 32, height: 32, background: '#4f46e5', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 14 }}>RN</div>
         <div>
-          <div style={{ fontSize: 13, fontWeight: 700 }}>Painel Financeiro</div>
-          <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 1 }}>Fechamento de Caixa</div>
+          <div style={{ fontSize: 13, fontWeight: 700 }}>RNpersonal</div>
+          <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 1 }}>Controle Financeiro</div>
         </div>
       </div>
       <nav style={{ flex: 1, padding: 12, overflowY: 'auto' }}>

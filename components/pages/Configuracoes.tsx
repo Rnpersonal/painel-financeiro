@@ -20,19 +20,42 @@ export function Configuracoes() {
             <div style={{ fontSize: 12, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 14 }}>Empresa</div>
             <div style={{ marginBottom: 16 }}>
               <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 5 }}>Nome do painel</label>
-              <input defaultValue="Painel Financeiro" style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '8px 12px', fontSize: 13, background: '#fff', width: '100%' }} />
+              <input defaultValue="RNpersonal" style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '8px 12px', fontSize: 13, background: '#fff', width: '100%' }} />
             </div>
             <div>
               <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 5 }}>Subtítulo</label>
-              <input defaultValue="Fechamento de Caixa Mensal" style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '8px 12px', fontSize: 13, background: '#fff', width: '100%' }} />
+              <input defaultValue="Controle Financeiro" style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '8px 12px', fontSize: 13, background: '#fff', width: '100%' }} />
             </div>
+          </div>
+
+          <div style={{ borderBottom: '1px solid #f3f4f6', paddingBottom: 18, marginBottom: 18 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 14 }}>Contas Bancárias</div>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead>
+                <tr>{['Banco','Tipo','Status'].map(h => (
+                  <th key={h} style={{ textAlign: 'left', padding: '8px 10px', fontSize: 11, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', borderBottom: '1px solid #f3f4f6' }}>{h}</th>
+                ))}</tr>
+              </thead>
+              <tbody>
+                {[
+                  { banco: 'Nubank', tipo: 'Conta Corrente' },
+                  { banco: 'BRB',    tipo: 'Conta Corrente' },
+                ].map(c => (
+                  <tr key={c.banco}>
+                    <td style={{ padding: '10px', color: '#374151', fontWeight: 600 }}>{c.banco}</td>
+                    <td style={{ padding: '10px', color: '#6b7280' }}>{c.tipo}</td>
+                    <td style={{ padding: '10px' }}><span style={{ background: '#d1fae5', color: '#065f46', padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 500 }}>Ativa</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
 
           <div>
             <div style={{ fontSize: 12, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 14 }}>Notificações</div>
             <div style={{ marginBottom: 16 }}>
               <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 5 }}>E-mail para alertas</label>
-              <input type="email" defaultValue="leadleveracademy@gmail.com" style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '8px 12px', fontSize: 13, background: '#fff', width: '100%' }} />
+              <input type="email" defaultValue="rnglopes@hotmail.com" style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '8px 12px', fontSize: 13, background: '#fff', width: '100%' }} />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13, color: '#374151' }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>

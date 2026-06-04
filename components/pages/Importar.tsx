@@ -70,8 +70,7 @@ export function Importar() {
           <div style={{ marginTop: 16, display: 'flex', gap: 10 }}>
             <select style={{ flex: 1, border: '1px solid #e5e7eb', borderRadius: 8, padding: '8px 12px', fontSize: 13, background: '#fff' }}>
               <option>Conta Corrente — Nubank</option>
-              <option>Conta Corrente — Itaú</option>
-              <option>Cartão Amex</option>
+              <option>Conta Corrente — BRB</option>
             </select>
             <button onClick={simular} style={{ background: '#4f46e5', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>
               Importar
