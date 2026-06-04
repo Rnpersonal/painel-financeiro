@@ -40,7 +40,7 @@ export function Dashboard() {
       .select('*')
       .eq('mes', m)
       .order('data', { ascending: false })
-    if (error) { setErro(`Erro: ${error.message} (${error.code})`); setLoading(false); return }
+    if (error) { setErro('Erro ao carregar dados. Verifique a conexão.'); setLoading(false); return }
     setLancamentos(data || [])
     setLoading(false)
   }, [])
