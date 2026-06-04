@@ -16,7 +16,7 @@ export default function Login() {
     setErro('')
     const { error } = await supabase.auth.signInWithPassword({ email, password: senha })
     if (error) {
-      setErro('Email ou senha incorretos.')
+      setErro(`Erro: ${error.message} | URL: ${process.env.NEXT_PUBLIC_SUPABASE_URL?.slice(0,30)}`)
       setLoading(false)
       return
     }
