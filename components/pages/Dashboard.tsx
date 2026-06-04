@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { supabase, type Lancamento } from '@/lib/supabase'
-import { fmt, MESES, MESES_OPTIONS, formatDate } from '@/lib/utils'
+import { fmt, MESES, MESES_OPTIONS, formatDate, getMesAtual } from '@/lib/utils'
 
 type CatVal = { nome: string; valor: number; cor: string }
 
@@ -22,7 +22,7 @@ function KPICard({ label, value, variant, sub }: { label: string; value: string;
 }
 
 export function Dashboard() {
-  const [mes, setMes] = useState('2026-04')
+  const [mes, setMes] = useState(getMesAtual)
   const [lancamentos, setLancamentos] = useState<Lancamento[]>([])
   const [loading, setLoading] = useState(true)
   const [erro, setErro] = useState('')

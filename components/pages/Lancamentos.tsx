@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { supabase, type Lancamento, type Categoria } from '@/lib/supabase'
-import { fmt, MESES_OPTIONS, formatDate } from '@/lib/utils'
+import { fmt, MESES_OPTIONS, formatDate, getMesAtual } from '@/lib/utils'
 import { Modal } from '@/components/ui/Modal'
 import { toast } from '@/components/ui/Toast'
 
@@ -18,7 +18,7 @@ export function Lancamentos() {
   const [filtroMes, setFiltroMes] = useState('')
   const [modal, setModal] = useState<'novo' | 'editar' | 'excluir' | null>(null)
   const [editing, setEditing] = useState<Lancamento | null>(null)
-  const [form, setForm] = useState({ tipo: 'entrada', descricao: '', data: new Date().toISOString().slice(0, 10), valor: '', categoria: '', mes: '2026-04', pendente: false })
+  const [form, setForm] = useState({ tipo: 'entrada', descricao: '', data: new Date().toISOString().slice(0, 10), valor: '', categoria: '', mes: getMesAtual(), pendente: false })
 
   async function load() {
     setLoading(true)
@@ -41,7 +41,7 @@ export function Lancamentos() {
   )
 
   function abrirNovo() {
-    setForm({ tipo: 'entrada', descricao: '', data: new Date().toISOString().slice(0, 10), valor: '', categoria: categorias[0]?.nome || '', mes: '2026-04', pendente: false })
+    setForm({ tipo: 'entrada', descricao: '', data: new Date().toISOString().slice(0, 10), valor: '', categoria: categorias[0]?.nome || '', mes: getMesAtual(), pendente: false })
     setEditing(null)
     setModal('novo')
   }
